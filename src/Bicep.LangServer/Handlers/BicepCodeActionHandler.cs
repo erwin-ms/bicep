@@ -81,16 +81,6 @@ namespace Bicep.LanguageServer.Handlers
 
             commandOrCodeActions.AddRange(quickFixes);
 
-            var analyzerDiagnostics = diagnostics
-                .Where(analyzerDiagnostic =>
-                    analyzerDiagnostic.Span.ContainsInclusive(requestStartOffset) ||
-                    analyzerDiagnostic.Span.ContainsInclusive(requestEndOffset) ||
-                    (requestStartOffset <= analyzerDiagnostic.Span.Position && analyzerDiagnostic.GetEndPosition() <= requestEndOffset))
-                .OfType<AnalyzerDiagnostic>()
-                .Select(analyzerDiagnostic => EditLinterRule(documentUri, analyzerDiagnostic.Code, compilation.Configuration.ConfigurationPath));
-
-            commandOrCodeActions.AddRange(analyzerDiagnostics);
-
             var coreCompilerErrors = diagnostics
                 .Where(diagnostic => !diagnostic.CanBeSuppressed());
             var diagnosticsThatCanBeSuppressed = diagnostics
@@ -101,7 +91,6 @@ namespace Bicep.LanguageServer.Handlers
                 .Except(coreCompilerErrors);
 
             HashSet<string> diagnosticCodesToSuppressInline = new();
-
             foreach (IDiagnostic diagnostic in diagnosticsThatCanBeSuppressed)
             {
                 if (!diagnosticCodesToSuppressInline.Contains(diagnostic.Code))
@@ -109,13 +98,22 @@ namespace Bicep.LanguageServer.Handlers
                     diagnosticCodesToSuppressInline.Add(diagnostic.Code);
 
                     var commandOrCodeAction = DisableDiagnostic(documentUri, diagnostic.Code, semanticModel.SourceFile, diagnostic.Span, compilationContext.LineStarts);
-
                     if (commandOrCodeAction is not null)
                     {
                         commandOrCodeActions.Add(commandOrCodeAction);
                     }
                 }
             }
+
+            // Add "Edit rule in bicep.config" for all linter failures //asdfg what if multiple rules in block?
+            var ConfigureLinterRuleActions = diagnostics
+                .Where(analyzerDiagnostic =>
+                    analyzerDiagnostic.Span.ContainsInclusive(requestStartOffset) ||
+                    analyzerDiagnostic.Span.ContainsInclusive(requestEndOffset) ||
+                    (requestStartOffset <= analyzerDiagnostic.Span.Position && analyzerDiagnostic.GetEndPosition() <= requestEndOffset))
+                .OfType<AnalyzerDiagnostic>()
+                .Select(analyzerDiagnostic => ConfigureLinterRule(documentUri, analyzerDiagnostic.Code, compilation.Configuration.ConfigurationPath));
+            commandOrCodeActions.AddRange(ConfigureLinterRuleActions);
 
             var matchingNodes = SyntaxMatcher.FindNodesInRange(compilationContext.ProgramSyntax, requestStartOffset, requestEndOffset);
             var codeFixes = codeFixProviders
@@ -177,13 +175,13 @@ namespace Bicep.LanguageServer.Handlers
             };
         }
 
-        private static CommandOrCodeAction EditLinterRule(DocumentUri documentUri, string ruleName, string? bicepConfigFilePath)
+        private static CommandOrCodeAction ConfigureLinterRule(DocumentUri documentUri, string ruleName, string? bicepConfigFilePath)
         {
-            var command = Command.Create(LanguageConstants.EditLinterRuleCommandName, documentUri, ruleName, bicepConfigFilePath ?? string.Empty);
+            var command = Command.Create(LanguageConstants.ConfigureLinterRuleCommandName, documentUri, ruleName, bicepConfigFilePath ?? string.Empty);
 
             return new CodeAction
             {
-                Title = LangServerResources.EditLinterRule,
+                Title = LangServerResources.ConfigureLinterRule,
                 Command = command
             };
         }

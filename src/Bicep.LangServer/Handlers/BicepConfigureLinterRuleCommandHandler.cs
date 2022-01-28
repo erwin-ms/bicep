@@ -7,29 +7,38 @@ using System.Threading;
 using System.Threading.Tasks;
 using Bicep.Core;
 using Bicep.Core.Configuration;
+using Bicep.LanguageServer.Telemetry;
 using MediatR;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using OmniSharp.Extensions.JsonRpc;
 using OmniSharp.Extensions.LanguageServer.Protocol;
+using OmniSharp.Extensions.LanguageServer.Protocol.Models;
+using OmniSharp.Extensions.LanguageServer.Protocol.Server;
+using OmniSharp.Extensions.LanguageServer.Protocol.Window;
 using OmniSharp.Extensions.LanguageServer.Protocol.Workspace;
 
 namespace Bicep.LanguageServer.Handlers
 {
-    public class BicepEditLinterRuleCommandHandler : ExecuteTypedCommandHandlerBase<DocumentUri, string, string>
+    public class BicepConfigureLinterRuleCommandHandler : ExecuteTypedCommandHandlerBase<DocumentUri, string, string>
     {
         private readonly string DefaultBicepConfig;
+        private readonly ILanguageServerFacade server;
+        private readonly ITelemetryProvider telemetryProvider;
 
-        public BicepEditLinterRuleCommandHandler(ISerializer serializer)
-            : base(LanguageConstants.EditLinterRuleCommandName, serializer)
+        public BicepConfigureLinterRuleCommandHandler(ISerializer serializer, ILanguageServerFacade server, ITelemetryProvider telemetryProvider)
+            : base(LanguageConstants.ConfigureLinterRuleCommandName, serializer)
         {
             DefaultBicepConfig = DefaultBicepConfigHelper.GetDefaultBicepConfig();
+            this.server = server;
+            this.telemetryProvider = telemetryProvider;
         }
 
         public override async Task<Unit> Handle(DocumentUri documentUri, string code, string bicepConfigFilePath, CancellationToken cancellationToken)
         {
-            (string updatedBicepConfigFilePath, string bicepConfigContents) = GetBicepConfigFilePathAndContents(documentUri, code, bicepConfigFilePath);
-            File.WriteAllText(updatedBicepConfigFilePath, bicepConfigContents);
+            await server.Window.ShowDocument(new ShowDocumentParams() { Uri = DocumentUri.File(bicepConfigFilePath) });
+            //     (string updatedBicepConfigFilePath, string bicepConfigContents) = GetBicepConfigFilePathAndContents(documentUri, code, bicepConfigFilePath);
+            //File.WriteAllText(updatedBicepConfigFilePath, bicepConfigContents);
 
             return await Unit.Task;
         }
@@ -38,7 +47,7 @@ namespace Bicep.LanguageServer.Handlers
         {
             if (File.Exists(bicepConfigFilePath))
             {
-                return (bicepConfigFilePath, EditLinterRule(File.ReadAllText(bicepConfigFilePath), code));
+                return (bicepConfigFilePath, ConfigureLinterRule(File.ReadAllText(bicepConfigFilePath), code));
             }
             else
             {
@@ -46,11 +55,11 @@ namespace Bicep.LanguageServer.Handlers
                     throw new ArgumentException("Unable to find directory information");
 
                 bicepConfigFilePath = Path.Combine(directoryContainingSourceFile, LanguageConstants.BicepConfigurationFileName);
-                return (bicepConfigFilePath, EditLinterRule(string.Empty, code));
+                return (bicepConfigFilePath, ConfigureLinterRule(string.Empty, code));
             }
         }
 
-        public string EditLinterRule(string bicepConfig, string code)
+        public string ConfigureLinterRule(string bicepConfig, string code)
         {
             try
             {
@@ -60,15 +69,15 @@ namespace Bicep.LanguageServer.Handlers
                 {
                     if (core["rules"] is JObject rules)
                     {
-                        if (rules[code] is JObject ruleName)
+                        if (rules[code] is JObject rule)
                         {
-                            if (ruleName.ContainsKey("level"))
+                            if (rule.ContainsKey("level"))
                             {
-                                ruleName["level"] = "off";
+                                rule["level"] = "off";
                             }
                             else
                             {
-                                ruleName.Add("level", "off");
+                                rule.Add("level", "off");
                             }
                         }
                         else

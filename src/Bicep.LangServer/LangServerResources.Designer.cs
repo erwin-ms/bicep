@@ -78,13 +78,13 @@ namespace Bicep.LanguageServer
         }
 
         /// <summary>
-        ///   Looks up a localized string similar to Disable linter rule in bicep.config.
+        ///   Looks up a localized string similar to Configure linter rule in bicep.config.
         /// </summary>
-        internal static string EditLinterRule
+        internal static string ConfigureLinterRule
         {
             get
             {
-                return ResourceManager.GetString("EditLinterRule", resourceCulture);
+                return ResourceManager.GetString("ConfigureLinterRule", resourceCulture);
             }
         }
     }
