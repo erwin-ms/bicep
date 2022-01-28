@@ -16,12 +16,12 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Workspace;
 
 namespace Bicep.LanguageServer.Handlers
 {
-    public class BicepDisableLinterRuleCommandHandler : ExecuteTypedCommandHandlerBase<DocumentUri, string, string>
+    public class BicepEditLinterRuleCommandHandler : ExecuteTypedCommandHandlerBase<DocumentUri, string, string>
     {
         private readonly string DefaultBicepConfig;
 
-        public BicepDisableLinterRuleCommandHandler(ISerializer serializer)
-            : base(LanguageConstants.DisableLinterRuleCommandName, serializer)
+        public BicepEditLinterRuleCommandHandler(ISerializer serializer)
+            : base(LanguageConstants.EditLinterRuleCommandName, serializer)
         {
             DefaultBicepConfig = DefaultBicepConfigHelper.GetDefaultBicepConfig();
         }
@@ -38,7 +38,7 @@ namespace Bicep.LanguageServer.Handlers
         {
             if (File.Exists(bicepConfigFilePath))
             {
-                return (bicepConfigFilePath, DisableLinterRule(File.ReadAllText(bicepConfigFilePath), code));
+                return (bicepConfigFilePath, EditLinterRule(File.ReadAllText(bicepConfigFilePath), code));
             }
             else
             {
@@ -46,11 +46,11 @@ namespace Bicep.LanguageServer.Handlers
                     throw new ArgumentException("Unable to find directory information");
 
                 bicepConfigFilePath = Path.Combine(directoryContainingSourceFile, LanguageConstants.BicepConfigurationFileName);
-                return (bicepConfigFilePath, DisableLinterRule(string.Empty, code));
+                return (bicepConfigFilePath, EditLinterRule(string.Empty, code));
             }
         }
 
-        public string DisableLinterRule(string bicepConfig, string code)
+        public string EditLinterRule(string bicepConfig, string code)
         {
             try
             {

@@ -18,17 +18,17 @@ using OmniSharp.Extensions.LanguageServer.Protocol;
 namespace Bicep.LangServer.UnitTests.Handlers
 {
     [TestClass]
-    public class BicepDisableLinterRuleCommandHandlerTests
+    public class BicepEditLinterRuleCommandHandlerTests
     {
         [NotNull]
         public TestContext? TestContext { get; set; }
 
         private static readonly MockRepository Repository = new(MockBehavior.Strict);
         private static readonly ISerializer Serializer = Repository.Create<ISerializer>().Object;
-        private BicepDisableLinterRuleCommandHandler BicepDisableLinterRuleHandler = new(Serializer);
+        private BicepEditLinterRuleCommandHandler BicepEditLinterRuleHandler = new(Serializer);
 
         [TestMethod]
-        public void DisableLinterRule_WithInvalidBicepConfig_ShouldThrow()
+        public void EditLinterRule_WithInvalidBicepConfig_ShouldThrow()
         {
             string bicepConfig = @"{
               ""analyzers"": {
@@ -40,13 +40,13 @@ namespace Bicep.LangServer.UnitTests.Handlers
                       ""level"": ""warning""
             }";
 
-            Action disableLinterRule = () => BicepDisableLinterRuleHandler.DisableLinterRule(bicepConfig, "no-unused-params");
+            Action editLinterRule = () => BicepEditLinterRuleHandler.EditLinterRule(bicepConfig, "no-unused-params");
 
-            disableLinterRule.Should().Throw<Exception>().WithMessage("File bicepconfig.json already exists and is invalid. If overwriting the file is intended, delete it manually and retry disable linter rule lightBulb option again");
+            editLinterRule.Should().Throw<Exception>().WithMessage("File bicepconfig.json already exists and is invalid. If overwriting the file is intended, delete it manually and retry disable linter rule lightBulb option again");
         }
 
         [TestMethod]
-        public void DisableLinterRule_WithRuleEnabledInBicepConfig_ShouldTurnOffRule()
+        public void EditLinterRule_WithRuleEnabledInBicepConfig_ShouldTurnOffRule()
         {
             string bicepConfigFileContents = @"{
   ""analyzers"": {
@@ -61,7 +61,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
     }
   }
 }";
-            string actual = BicepDisableLinterRuleHandler.DisableLinterRule(bicepConfigFileContents, "no-unused-params");
+            string actual = BicepEditLinterRuleHandler.EditLinterRule(bicepConfigFileContents, "no-unused-params");
 
             actual.Should().BeEquivalentToIgnoringNewlines(@"{
   ""analyzers"": {
@@ -79,7 +79,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
         }
 
         [TestMethod]
-        public void DisableLinterRule_WithRuleDisabledInBicepConfig_DoesNothing()
+        public void EditLinterRule_WithRuleDisabledInBicepConfig_DoesNothing()
         {
             string bicepConfigFileContents = @"{
   ""analyzers"": {
@@ -94,7 +94,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
     }
   }
 }";
-            string actual = BicepDisableLinterRuleHandler.DisableLinterRule(bicepConfigFileContents, "no-unused-params");
+            string actual = BicepEditLinterRuleHandler.EditLinterRule(bicepConfigFileContents, "no-unused-params");
 
             actual.Should().BeEquivalentToIgnoringNewlines(@"{
   ""analyzers"": {
@@ -112,7 +112,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
         }
 
         [TestMethod]
-        public void DisableLinterRule_WithNoRuleInBicepConfig_ShouldAddAnEntryInBicepConfig()
+        public void EditLinterRule_WithNoRuleInBicepConfig_ShouldAddAnEntryInBicepConfig()
         {
             string bicepConfigFileContents = @"{
   ""analyzers"": {
@@ -124,7 +124,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
     }
   }
 }";
-            string actual = BicepDisableLinterRuleHandler.DisableLinterRule(bicepConfigFileContents, "no-unused-params");
+            string actual = BicepEditLinterRuleHandler.EditLinterRule(bicepConfigFileContents, "no-unused-params");
 
             actual.Should().BeEquivalentToIgnoringNewlines(@"{
   ""analyzers"": {
@@ -142,7 +142,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
         }
 
         [TestMethod]
-        public void DisableLinterRule_WithNoLevelPropertyInRule_ShouldAddAnEntryInBicepConfigAndTurnOffRule()
+        public void EditLinterRule_WithNoLevelPropertyInRule_ShouldAddAnEntryInBicepConfigAndTurnOffRule()
         {
             string bicepConfigFileContents = @"{
   ""analyzers"": {
@@ -156,7 +156,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
     }
   }
 }";
-            string actual = BicepDisableLinterRuleHandler.DisableLinterRule(bicepConfigFileContents, "no-unused-params");
+            string actual = BicepEditLinterRuleHandler.EditLinterRule(bicepConfigFileContents, "no-unused-params");
 
             actual.Should().BeEquivalentToIgnoringNewlines(@"{
   ""analyzers"": {
@@ -174,7 +174,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
         }
 
         [TestMethod]
-        public void DisableLinterRule_WithNoRulesNode_ShouldAddAnEntryInBicepConfigAndTurnOffRule()
+        public void EditLinterRule_WithNoRulesNode_ShouldAddAnEntryInBicepConfigAndTurnOffRule()
         {
             string bicepConfigFileContents = @"{
   ""analyzers"": {
@@ -184,7 +184,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
     }
   }
 }";
-            string actual = BicepDisableLinterRuleHandler.DisableLinterRule(bicepConfigFileContents, "no-unused-params");
+            string actual = BicepEditLinterRuleHandler.EditLinterRule(bicepConfigFileContents, "no-unused-params");
 
             actual.Should().BeEquivalentToIgnoringNewlines(@"{
   ""analyzers"": {
@@ -202,9 +202,9 @@ namespace Bicep.LangServer.UnitTests.Handlers
         }
 
         [TestMethod]
-        public void DisableLinterRule_WithOnlyCurlyBraces_ShouldUseDefaultConfigAndTurnOffRule()
+        public void EditLinterRule_WithOnlyCurlyBraces_ShouldUseDefaultConfigAndTurnOffRule()
         {
-            string actual = BicepDisableLinterRuleHandler.DisableLinterRule("{}", "no-unused-params");
+            string actual = BicepEditLinterRuleHandler.EditLinterRule("{}", "no-unused-params");
 
             actual.Should().BeEquivalentToIgnoringNewlines(@"{
   ""cloud"": {
@@ -276,7 +276,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
             var bicepPath = FileHelper.SaveResultFile(TestContext, "main.bicep", @"param storageAccountName string = 'test'");
             DocumentUri documentUri = DocumentUri.FromFileSystemPath(bicepPath);
 
-            (string actualBicepConfigFilePath, string actualBicepConfigContents) = BicepDisableLinterRuleHandler.GetBicepConfigFilePathAndContents(documentUri, "no-unused-params", string.Empty);
+            (string actualBicepConfigFilePath, string actualBicepConfigContents) = BicepEditLinterRuleHandler.GetBicepConfigFilePathAndContents(documentUri, "no-unused-params", string.Empty);
 
             var directoryContainingSourceFile = Path.GetDirectoryName(documentUri.GetFileSystemPath());
             string expectedBicepConfigFilePath = Path.Combine(directoryContainingSourceFile!, LanguageConstants.BicepConfigurationFileName);
@@ -351,7 +351,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
         {
             var bicepPath = FileHelper.SaveResultFile(TestContext, "main.bicep", @"param storageAccountName string = 'test'");
             DocumentUri documentUri = DocumentUri.FromFileSystemPath(bicepPath);
-            (string actualBicepConfigFilePath, string actualBicepConfigContents) = BicepDisableLinterRuleHandler.GetBicepConfigFilePathAndContents(documentUri, "no-unused-params", @"\nonExistent\bicepconfig.json");
+            (string actualBicepConfigFilePath, string actualBicepConfigContents) = BicepEditLinterRuleHandler.GetBicepConfigFilePathAndContents(documentUri, "no-unused-params", @"\nonExistent\bicepconfig.json");
 
             var directoryContainingSourceFile = Path.GetDirectoryName(documentUri.GetFileSystemPath());
             string expectedBicepConfigFilePath = Path.Combine(directoryContainingSourceFile!, LanguageConstants.BicepConfigurationFileName);
@@ -440,7 +440,7 @@ namespace Bicep.LangServer.UnitTests.Handlers
             string bicepConfigFilePath = FileHelper.SaveResultFile(TestContext, "bicepconfig.json", bicepConfigFileContents, testOutputPath, Encoding.UTF8);
 
             DocumentUri documentUri = DocumentUri.FromFileSystemPath("/path/to/main.bicep");
-            (string actualBicepConfigFilePath, string actualBicepConfigContents) = BicepDisableLinterRuleHandler.GetBicepConfigFilePathAndContents(documentUri, "no-unused-params", bicepConfigFilePath);
+            (string actualBicepConfigFilePath, string actualBicepConfigContents) = BicepEditLinterRuleHandler.GetBicepConfigFilePathAndContents(documentUri, "no-unused-params", bicepConfigFilePath);
 
             actualBicepConfigFilePath.Should().Be(bicepConfigFilePath);
             actualBicepConfigContents.Should().BeEquivalentToIgnoringNewlines(@"{

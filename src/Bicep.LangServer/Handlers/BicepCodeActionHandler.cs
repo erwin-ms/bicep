@@ -87,7 +87,7 @@ namespace Bicep.LanguageServer.Handlers
                     analyzerDiagnostic.Span.ContainsInclusive(requestEndOffset) ||
                     (requestStartOffset <= analyzerDiagnostic.Span.Position && analyzerDiagnostic.GetEndPosition() <= requestEndOffset))
                 .OfType<AnalyzerDiagnostic>()
-                .Select(analyzerDiagnostic => DisableLinterRule(documentUri, analyzerDiagnostic.Code, compilation.Configuration.ConfigurationPath));
+                .Select(analyzerDiagnostic => EditLinterRule(documentUri, analyzerDiagnostic.Code, compilation.Configuration.ConfigurationPath));
 
             commandOrCodeActions.AddRange(analyzerDiagnostics);
 
@@ -177,13 +177,13 @@ namespace Bicep.LanguageServer.Handlers
             };
         }
 
-        private static CommandOrCodeAction DisableLinterRule(DocumentUri documentUri, string ruleName, string? bicepConfigFilePath)
+        private static CommandOrCodeAction EditLinterRule(DocumentUri documentUri, string ruleName, string? bicepConfigFilePath)
         {
-            var command = Command.Create(LanguageConstants.DisableLinterRuleCommandName, documentUri, ruleName, bicepConfigFilePath ?? string.Empty);
+            var command = Command.Create(LanguageConstants.EditLinterRuleCommandName, documentUri, ruleName, bicepConfigFilePath ?? string.Empty);
 
             return new CodeAction
             {
-                Title = LangServerResources.DisableLinterRule,
+                Title = LangServerResources.EditLinterRule,
                 Command = command
             };
         }

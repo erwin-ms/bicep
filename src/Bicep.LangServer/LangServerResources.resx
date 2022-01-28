@@ -120,7 +120,7 @@
 	<data name="DisableDiagnosticForThisLine" xml:space="preserve">
     <value>Disable {0} for this line</value>
   </data>
-	<data name="DisableLinterRule" xml:space="preserve">
+	<data name="EditLinterRule" xml:space="preserve">
     <value>Disable linter rule in bicep.config</value>
   </data>
 </root>
