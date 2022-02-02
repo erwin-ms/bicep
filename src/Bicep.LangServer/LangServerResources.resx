@@ -121,6 +121,7 @@
     <value>Disable {0} for this line</value>
   </data>
 	<data name="ConfigureLinterRule" xml:space="preserve">
-    <value>Configure linter rule in bicep.config</value>
+    <value>Configure {0} in bicep.config</value>
+	<comment>{0} = programmatic name of a linter rule</comment>
   </data>
 </root>

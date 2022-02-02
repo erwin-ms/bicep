@@ -181,7 +181,7 @@ namespace Bicep.LanguageServer.Handlers
 
             return new CodeAction
             {
-                Title = LangServerResources.ConfigureLinterRule,
+                Title = String.Format(LangServerResources.ConfigureLinterRule, ruleName),
                 Command = command
             };
         }

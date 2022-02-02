@@ -17,6 +17,7 @@ using OmniSharp.Extensions.LanguageServer.Protocol.Models;
 using OmniSharp.Extensions.LanguageServer.Protocol.Server;
 using OmniSharp.Extensions.LanguageServer.Protocol.Window;
 using OmniSharp.Extensions.LanguageServer.Protocol.Workspace;
+using Range = OmniSharp.Extensions.LanguageServer.Protocol.Models.Range;
 
 namespace Bicep.LanguageServer.Handlers
 {
@@ -36,18 +37,51 @@ namespace Bicep.LanguageServer.Handlers
 
         public override async Task<Unit> Handle(DocumentUri documentUri, string code, string bicepConfigFilePath, CancellationToken cancellationToken)
         {
-            await server.Window.ShowDocument(new ShowDocumentParams() { Uri = DocumentUri.File(bicepConfigFilePath) });
-            //     (string updatedBicepConfigFilePath, string bicepConfigContents) = GetBicepConfigFilePathAndContents(documentUri, code, bicepConfigFilePath);
+            //(string updatedBicepConfigFilePath, string bicepConfigContents) = GetBicepConfigFilePathAndContents(documentUri, code, bicepConfigFilePath);
+            (int line, int column, int length) = GetBicepConfigFilePathAndContents(documentUri, code, bicepConfigFilePath);
+            var showDocResult = await server.Window.ShowDocument(new ShowDocumentParams()
+            {
+                Uri = DocumentUri.File(bicepConfigFilePath),
+                Selection = new Range(line - 1, column - 1, line - 1, column - 1 + length),
+                TakeFocus = true
+            });
+
             //File.WriteAllText(updatedBicepConfigFilePath, bicepConfigContents);
 
             return await Unit.Task;
         }
 
-        public (string, string) GetBicepConfigFilePathAndContents(DocumentUri documentUri, string code, string bicepConfigFilePath)
+        public (int, int, int) GetBicepConfigFilePathAndContents(DocumentUri documentUri, string code, string bicepConfigFilePath)
         {
             if (File.Exists(bicepConfigFilePath))
             {
-                return (bicepConfigFilePath, ConfigureLinterRule(File.ReadAllText(bicepConfigFilePath), code));
+                var bicepConfigContents = File.ReadAllText(bicepConfigFilePath); //asdfg errors?
+
+                string jsonString = bicepConfigContents;
+                // Convert the JSON string to a JObject:
+                //JObject? jObject = JsonConvert.DeserializeObject(jsonString) as JObject;
+
+                TextReader textReader = File.OpenText(bicepConfigFilePath);
+                JsonReader jsonReader = new JsonTextReader(textReader);
+                // LineInfoHandling.Load ensures line info is saved for all tokens while parsing (requires some additional memory).
+                var jObject = JObject.Load(jsonReader, new JsonLoadSettings { LineInfoHandling = LineInfoHandling.Load });
+
+                // Select a nested property using a single string:
+                JToken? jToken = jObject?.SelectToken("analyzers.core.rules.no-hardcoded-location.level");
+                if (jObject is not null && jToken is not null)
+                {
+                    var a = jToken as IJsonLineInfo;
+                    return (a.LineNumber, a.LinePosition - jToken.ToString().Length, jToken.ToString().Length); //asdfg
+
+                    // Update the value of the property: 
+                    // jToken.Replace("myNewPassword123");
+                    // // Convert the JObject back to a string:
+                    // string updatedJsonString = jObject.ToString();
+                    // File.WriteAllText(bicepConfigFilePath, updatedJsonString);
+
+                }
+
+                return (0, 0, 0); //(bicepConfigFilePath, ConfigureLinterRule(bicepConfigContents, code));
             }
             else
             {
@@ -55,15 +89,15 @@ namespace Bicep.LanguageServer.Handlers
                     throw new ArgumentException("Unable to find directory information");
 
                 bicepConfigFilePath = Path.Combine(directoryContainingSourceFile, LanguageConstants.BicepConfigurationFileName);
-                return (bicepConfigFilePath, ConfigureLinterRule(string.Empty, code));
+                return (0, 0, 0); //(bicepConfigFilePath, ConfigureLinterRule(string.Empty, code));
             }
         }
 
-        public string ConfigureLinterRule(string bicepConfig, string code)
+        public string ConfigureLinterRule(string bicepConfigContents, string code)
         {
             try
             {
-                if (JsonConvert.DeserializeObject(bicepConfig) is JObject root &&
+                if (JsonConvert.DeserializeObject(bicepConfigContents) is JObject root &&
                     root["analyzers"] is JObject analyzers &&
                     analyzers["core"] is JObject core)
                 {
@@ -108,6 +142,7 @@ namespace Bicep.LanguageServer.Handlers
             }
             catch (Exception)
             {
+                //asdfg show full path, better error
                 throw new Exception("File bicepconfig.json already exists and is invalid. If overwriting the file is intended, delete it manually and retry disable linter rule lightBulb option again");
             }
         }

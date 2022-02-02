@@ -67,6 +67,17 @@ namespace Bicep.LanguageServer
         }
 
         /// <summary>
+        ///   Looks up a localized string similar to Configure {0} in bicep.config.
+        /// </summary>
+        internal static string ConfigureLinterRule
+        {
+            get
+            {
+                return ResourceManager.GetString("ConfigureLinterRule", resourceCulture);
+            }
+        }
+
+        /// <summary>
         ///   Looks up a localized string similar to Disable {0} for this line.
         /// </summary>
         internal static string DisableDiagnosticForThisLine
@@ -74,17 +85,6 @@ namespace Bicep.LanguageServer
             get
             {
                 return ResourceManager.GetString("DisableDiagnosticForThisLine", resourceCulture);
-            }
-        }
-
-        /// <summary>
-        ///   Looks up a localized string similar to Configure linter rule in bicep.config.
-        /// </summary>
-        internal static string ConfigureLinterRule
-        {
-            get
-            {
-                return ResourceManager.GetString("ConfigureLinterRule", resourceCulture);
             }
         }
     }
