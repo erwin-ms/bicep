@@ -58,16 +58,15 @@ namespace Bicep.LanguageServer.Handlers
                 var bicepConfigContents = File.ReadAllText(bicepConfigFilePath); //asdfg errors?
 
                 string jsonString = bicepConfigContents;
-                // Convert the JSON string to a JObject:
-                //JObject? jObject = JsonConvert.DeserializeObject(jsonString) as JObject;
 
+                // Convert the JSON string to a JObject:
                 TextReader textReader = File.OpenText(bicepConfigFilePath);
                 JsonReader jsonReader = new JsonTextReader(textReader);
                 // LineInfoHandling.Load ensures line info is saved for all tokens while parsing (requires some additional memory).
                 var jObject = JObject.Load(jsonReader, new JsonLoadSettings { LineInfoHandling = LineInfoHandling.Load });
 
                 // Select a nested property using a single string:
-                JToken? jToken = jObject?.SelectToken("analyzers.core.rules.no-hardcoded-location.level");
+                JToken? jToken = jObject?.SelectToken($"analyzers.core.rules.{code}.level");
                 if (jObject is not null && jToken is not null)
                 {
                     var a = jToken as IJsonLineInfo;
@@ -85,6 +84,7 @@ namespace Bicep.LanguageServer.Handlers
             }
             else
             {
+                //asdfg where create?
                 var directoryContainingSourceFile = Path.GetDirectoryName(documentUri.GetFileSystemPath()) ??
                     throw new ArgumentException("Unable to find directory information");
 
