@@ -38,59 +38,110 @@ namespace Bicep.LanguageServer.Handlers
         public override async Task<Unit> Handle(DocumentUri documentUri, string code, string bicepConfigFilePath, CancellationToken cancellationToken)
         {
             //(string updatedBicepConfigFilePath, string bicepConfigContents) = GetBicepConfigFilePathAndContents(documentUri, code, bicepConfigFilePath);
-            (int line, int column, int length) = GetBicepConfigFilePathAndContents(documentUri, code, bicepConfigFilePath);
-            var showDocResult = await server.Window.ShowDocument(new ShowDocumentParams()
-            {
-                Uri = DocumentUri.File(bicepConfigFilePath),
-                Selection = new Range(line - 1, column - 1, line - 1, column - 1 + length),
-                TakeFocus = true
-            });
 
             //File.WriteAllText(updatedBicepConfigFilePath, bicepConfigContents);
 
-            return await Unit.Task;
-        }
-
-        public (int, int, int) GetBicepConfigFilePathAndContents(DocumentUri documentUri, string code, string bicepConfigFilePath)
-        {
+            string bicepConfigContents;
             if (File.Exists(bicepConfigFilePath))
             {
-                var bicepConfigContents = File.ReadAllText(bicepConfigFilePath); //asdfg errors?
-
-                string jsonString = bicepConfigContents;
-
-                // Convert the JSON string to a JObject:
-                TextReader textReader = File.OpenText(bicepConfigFilePath);
-                JsonReader jsonReader = new JsonTextReader(textReader);
-                // LineInfoHandling.Load ensures line info is saved for all tokens while parsing (requires some additional memory).
-                var jObject = JObject.Load(jsonReader, new JsonLoadSettings { LineInfoHandling = LineInfoHandling.Load });
-
-                // Select a nested property using a single string:
-                JToken? jToken = jObject?.SelectToken($"analyzers.core.rules.{code}.level");
-                if (jObject is not null && jToken is not null)
-                {
-                    var a = jToken as IJsonLineInfo;
-                    return (a.LineNumber, a.LinePosition - jToken.ToString().Length, jToken.ToString().Length); //asdfg
-
-                    // Update the value of the property: 
-                    // jToken.Replace("myNewPassword123");
-                    // // Convert the JObject back to a string:
-                    // string updatedJsonString = jObject.ToString();
-                    // File.WriteAllText(bicepConfigFilePath, updatedJsonString);
-
-                }
-
-                return (0, 0, 0); //(bicepConfigFilePath, ConfigureLinterRule(bicepConfigContents, code));
+                bicepConfigContents = File.ReadAllText(bicepConfigFilePath); //asdfg errors?
             }
             else
             {
+                bicepConfigContents = ConfigureLinterRule(string.Empty, code);
                 //asdfg where create?
                 var directoryContainingSourceFile = Path.GetDirectoryName(documentUri.GetFileSystemPath()) ??
                     throw new ArgumentException("Unable to find directory information");
 
                 bicepConfigFilePath = Path.Combine(directoryContainingSourceFile, LanguageConstants.BicepConfigurationFileName);
-                return (0, 0, 0); //(bicepConfigFilePath, ConfigureLinterRule(string.Empty, code));
+                File.WriteAllText(bicepConfigFilePath, bicepConfigContents);
+                //return (0, 0, 0); //(bicepConfigFilePath, ConfigureLinterRule(string.Empty, code));
             }
+
+            await SetCursor(code, bicepConfigFilePath);
+            return await Unit.Task;
+        }
+
+        //public (int, int, int) GetBicepConfigFilePathAndContents(DocumentUri documentUri, string code, string bicepConfigFilePath)
+        //{
+        //    if (File.Exists(bicepConfigFilePath))
+        //    {
+        //        var bicepConfigContents = File.ReadAllText(bicepConfigFilePath); //asdfg errors?
+
+        //        string jsonString = bicepConfigContents;
+
+        //        // Convert the JSON string to a JObject:
+        //        TextReader textReader = File.OpenText(bicepConfigFilePath);
+        //        JsonReader jsonReader = new JsonTextReader(textReader);
+        //        // LineInfoHandling.Load ensures line info is saved for all tokens while parsing (requires some additional memory).
+        //        var jObject = JObject.Load(jsonReader, new JsonLoadSettings { LineInfoHandling = LineInfoHandling.Load });
+
+        //        // Select a nested property using a single string:
+        //        JToken? jToken = jObject?.SelectToken($"analyzers.core.rules.{code}.level");
+        //        if (jObject is not null && jToken is not null)
+        //        {
+        //            var a = jToken as IJsonLineInfo;
+        //            return (a.LineNumber, a.LinePosition - jToken.ToString().Length, jToken.ToString().Length); //asdfg
+
+        //            // Update the value of the property: 
+        //            // jToken.Replace("myNewPassword123");
+        //            // // Convert the JObject back to a string:
+        //            // string updatedJsonString = jObject.ToString();
+        //            // File.WriteAllText(bicepConfigFilePath, updatedJsonString);
+        //        }
+
+        //        return (0, 0, 0); //(bicepConfigFilePath, ConfigureLinterRule(bicepConfigContents, code));
+        //    }
+        //    else
+        //    {
+        //        //asdfg where create?
+        //        var directoryContainingSourceFile = Path.GetDirectoryName(documentUri.GetFileSystemPath()) ??
+        //            throw new ArgumentException("Unable to find directory information");
+
+        //        bicepConfigFilePath = Path.Combine(directoryContainingSourceFile, LanguageConstants.BicepConfigurationFileName);
+        //        return (0, 0, 0); //(bicepConfigFilePath, ConfigureLinterRule(string.Empty, code));
+        //    }
+        //}
+
+        public async Task SetCursor(/*DocumentUri documentUri, */string code, string bicepConfigFilePath)
+        {
+            //if (File.Exists(bicepConfigFilePath))
+            //{
+            var bicepConfigContents = File.ReadAllText(bicepConfigFilePath); //asdfg errors?
+
+            string jsonString = bicepConfigContents;
+
+            // Convert the JSON string to a JObject:
+            TextReader textReader = File.OpenText(bicepConfigFilePath);
+            JsonReader jsonReader = new JsonTextReader(textReader);
+            // LineInfoHandling.Load ensures line info is saved for all tokens while parsing (requires some additional memory).
+            var jObject = JObject.Load(jsonReader, new JsonLoadSettings { LineInfoHandling = LineInfoHandling.Load });
+
+            // Select a nested property using a single string:
+            JToken? jToken = jObject?.SelectToken($"analyzers.core.rules.{code}.level");
+            if (jObject is not null && jToken is not null)
+            {
+                var a = jToken as IJsonLineInfo;
+                // return (a.LineNumber, a.LinePosition - jToken.ToString().Length, jToken.ToString().Length); //asdfg
+                int line = a.LineNumber;
+                int column = a.LinePosition - jToken.ToString().Length;
+                int length = jToken.ToString().Length;
+                // GetBicepConfigFilePathAndContents(documentUri, code, bicepConfigFilePath);
+                var showDocResult = await server.Window.ShowDocument(new ShowDocumentParams()
+                {
+                    Uri = DocumentUri.File(bicepConfigFilePath),
+                    Selection = new Range(line - 1, column - 1, line - 1, column - 1 + length),
+                    TakeFocus = true
+                });
+
+                // Update the value of the property: 
+                // jToken.Replace("myNewPassword123");
+                // // Convert the JObject back to a string:
+                // string updatedJsonString = jObject.ToString();
+                // File.WriteAllText(bicepConfigFilePath, updatedJsonString);
+            }
+
+            //return (0, 0, 0); //(bicepConfigFilePath, ConfigureLinterRule(bicepConfigContents, code));
         }
 
         public string ConfigureLinterRule(string bicepConfigContents, string code)
@@ -107,22 +158,22 @@ namespace Bicep.LanguageServer.Handlers
                         {
                             if (rule.ContainsKey("level"))
                             {
-                                rule["level"] = "off";
+                                rule["level"] = "warning";//asdfg
                             }
                             else
                             {
-                                rule.Add("level", "off");
+                                rule.Add("level", "warning"); //asdfg
                             }
                         }
                         else
                         {
-                            SetRuleLevelToOff(rules, code);
+                            SetRuleLevelToDefault(rules, code);
                         }
                     }
                     else
                     {
                         JObject rule = new JObject();
-                        SetRuleLevelToOff(rule, code);
+                        SetRuleLevelToDefault(rule, code);
 
                         core.Add("rules", rule);
                     }
@@ -133,7 +184,7 @@ namespace Bicep.LanguageServer.Handlers
                 if (JsonConvert.DeserializeObject(DefaultBicepConfig) is JObject defaultBicepConfigRoot &&
                     defaultBicepConfigRoot["analyzers"]?["core"]?["rules"] is JObject defaultRules)
                 {
-                    SetRuleLevelToOff(defaultRules, code);
+                    SetRuleLevelToDefault(defaultRules, code);
 
                     return defaultBicepConfigRoot.ToString();
                 }
@@ -147,10 +198,10 @@ namespace Bicep.LanguageServer.Handlers
             }
         }
 
-        private void SetRuleLevelToOff(JObject jObject, string code)
+        private void SetRuleLevelToDefault(JObject jObject, string code)
         {
             jObject.Add(code, JToken.Parse(@"{
-  ""level"": ""off""
+  ""level"": ""warning""
 }"));
         }
     }

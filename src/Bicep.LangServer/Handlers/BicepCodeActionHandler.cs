@@ -105,7 +105,7 @@ namespace Bicep.LanguageServer.Handlers
                 }
             }
 
-            // Add "Edit rule in bicep.config" for all linter failures //asdfg what if multiple rules in block?
+            // Add "Configure rule in bicep.config" for all linter failures //asdfg what if multiple rules in block?
             var ConfigureLinterRuleActions = diagnostics
                 .Where(analyzerDiagnostic =>
                     analyzerDiagnostic.Span.ContainsInclusive(requestStartOffset) ||
