@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Bicep.Core;
 using Bicep.Core.Configuration;
+using Bicep.LanguageServer.Configuration;
 using Bicep.LanguageServer.Telemetry;
 using MediatR;
 using Newtonsoft.Json;
@@ -107,15 +108,25 @@ namespace Bicep.LanguageServer.Handlers
         {
             //if (File.Exists(bicepConfigFilePath))
             //{
-            var bicepConfigContents = File.ReadAllText(bicepConfigFilePath); //asdfg errors?
+            //var bicepConfigContents = File.ReadAllText(bicepConfigFilePath); //asdfg errors?
 
-            string jsonString = bicepConfigContents;
+            //string jsonString = bicepConfigContents;
 
             // Convert the JSON string to a JObject:
             TextReader textReader = File.OpenText(bicepConfigFilePath);
             JsonReader jsonReader = new JsonTextReader(textReader);
+            while (jsonReader.Read())
+            {
+                var a = jsonReader.Value;
+            }
+            jsonReader = new JsonTextReader(textReader);
             // LineInfoHandling.Load ensures line info is saved for all tokens while parsing (requires some additional memory).
-            var jObject = JObject.Load(jsonReader, new JsonLoadSettings { LineInfoHandling = LineInfoHandling.Load });
+            var jObject = JObject.Load(jsonReader, new JsonLoadSettings
+            {
+                LineInfoHandling = LineInfoHandling.Load,
+                CommentHandling = CommentHandling.Load,
+                DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Ignore,
+            });
 
             // Select a nested property using a single string:
             JToken? jToken = jObject?.SelectToken($"analyzers.core.rules.{code}.level");
@@ -140,6 +151,11 @@ namespace Bicep.LanguageServer.Handlers
                 // string updatedJsonString = jObject.ToString();
                 // File.WriteAllText(bicepConfigFilePath, updatedJsonString);
             }
+            else
+            {
+                string json = File.ReadAllText(bicepConfigFilePath);
+                (int line, int column, string text)? insertion = new JsonEditor(json).GetObjectPropertyInsertion("analyzers.core.rules", code, new { level = "warning" });
+            }
 
             //return (0, 0, 0); //(bicepConfigFilePath, ConfigureLinterRule(bicepConfigContents, code));
         }
@@ -148,10 +164,22 @@ namespace Bicep.LanguageServer.Handlers
         {
             try
             {
-                if (JsonConvert.DeserializeObject(bicepConfigContents) is JObject root &&
+                TextReader textReader = new StringReader(bicepConfigContents);
+                JsonReader jsonReader = new JsonTextReader(textReader);
+                // LineInfoHandling.Load ensures line info is saved for all tokens while parsing (requires some additional memory).
+                var jObject = JObject.Load(jsonReader, new JsonLoadSettings
+                {
+                    LineInfoHandling = LineInfoHandling.Load,
+                    CommentHandling = CommentHandling.Load,
+                    DuplicatePropertyNameHandling = DuplicatePropertyNameHandling.Ignore,
+                });
+                if (jObject is JObject root &&
                     root["analyzers"] is JObject analyzers &&
                     analyzers["core"] is JObject core)
                 {
+                    var a = root.Children()[0];
+                    var b = a.Values();
+
                     if (core["rules"] is JObject rules)
                     {
                         if (rules[code] is JObject rule)
