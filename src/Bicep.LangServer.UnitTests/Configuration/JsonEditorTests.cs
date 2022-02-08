@@ -5,6 +5,7 @@ using System;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Linq;
 using Bicep.Core.Configuration;
 using Bicep.Core.Text;
 using Bicep.Core.UnitTests.Utils;
@@ -24,9 +25,21 @@ namespace Bicep.LangServer.UnitTests.Configuration
         public TestContext? TestContext { get; set; }//asdfg
 
         [TestMethod]
-        public void asdfg()
+        public void EmptyPaths_Throws()
         {
-            var json = @"{
+            Action action = () => TestInsertion(
+                "",
+                "",
+                new { level = "warning" },
+                "");
+            action.Should().Throw<ArgumentException>();
+        }
+
+        [TestMethod]
+        public void AlreadyExists_TopLevelPath()
+        {
+            TestInsertion(
+                @"{
   ""analyzers"": {
     ""core"": {
       ""verbose"": false,
@@ -38,21 +51,74 @@ namespace Bicep.LangServer.UnitTests.Configuration
       }
     }
   }
-}";
-            (int line, int column, string text)? insertion = new JsonEditor(json).GetObjectPropertyInsertion("analyzers.core.rules", "rule-name", new { level = "warning" });
-            insertion.Should().NotBeNull();
-            var newText = ApplyInsertion(json, insertion!.Value);
-            //insertion.Should().Be((1, 1, "\"hello\""));
-#pragma warning disable RS0030 // Do not used banned APIs
-            Console.WriteLine(newText);
-#pragma warning restore RS0030 // Do not used banned APIs
+}",
+                "analyzers",
+                "value",
+                null);
         }
 
-        private string ApplyInsertion(string text, (int line, int column, string text) insertion)
+        [TestMethod]
+        public void AlreadyExists_Middle()
         {
-            ImmutableArray<int> lineStarts = TextCoordinateConverter.GetLineStarts(text);
-            int offset = TextCoordinateConverter.GetOffset(lineStarts, insertion.line, insertion.column);
-            return text.Substring(0, offset) + insertion.text + text.Substring(offset);
+            TestInsertion(
+                @"{
+  ""analyzers"": {
+    ""core"": {
+      ""verbose"": false,
+      ""enabled"": true,
+      ""rules"": {
+        ""no-unused-params"": {
+          ""level"": ""info""
+        }
+      }
+    }
+  }
+}",
+                "analyzers.core.rules.no-unused-params",
+                new { level = "warning" },
+                null
+            );
+        }
+
+        [TestMethod]
+        public void AlreadyExists_Leaf()
+        {
+            TestInsertion(
+                @"{
+  ""analyzers"": {
+    ""core"": {
+      ""verbose"": false,
+      ""enabled"": true,
+      ""rules"": {
+        ""no-unused-params"": {
+          ""level"": ""info""
+        }
+      }
+    }
+  }
+}",
+                "analyzers.core.rules.no-unused-params.level",
+                "warning",
+                null
+            );
+        }
+
+        private void TestInsertion(string beforeText, string insertionPath, object insertionValue, string? afterText)
+        {
+            (int line, int column, string text)? insertion = new JsonEditor(beforeText).
+                GetValueInsertionIfNotExist(
+                insertionPath.Split('.').Where(p => p.Length > 0).ToArray(),
+                insertionValue);
+            if (afterText is null)
+            {
+                insertion.Should().BeNull();
+            }
+            else
+            {
+                insertion.Should().NotBeNull();
+                var newText = JsonEditor.ApplyInsertion(beforeText, insertion!.Value);
+                newText.Should().Be(afterText);
+            }
         }
     }
 }

@@ -154,7 +154,9 @@ namespace Bicep.LanguageServer.Handlers
             else
             {
                 string json = File.ReadAllText(bicepConfigFilePath);
-                (int line, int column, string text)? insertion = new JsonEditor(json).GetObjectPropertyInsertion("analyzers.core.rules", code, new { level = "warning" });
+                (int line, int column, string text)? insertion = new JsonEditor(json).GetValueInsertionIfNotExist(
+                    new string[] { "analyzers", "core", "rules", code },
+                    new { level = "warning" });
             }
 
             //return (0, 0, 0); //(bicepConfigFilePath, ConfigureLinterRule(bicepConfigContents, code));
