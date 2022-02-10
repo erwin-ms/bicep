@@ -36,31 +36,45 @@ namespace Bicep.LanguageServer.Handlers
             this.telemetryProvider = telemetryProvider;
         }
 
-        public override async Task<Unit> Handle(DocumentUri documentUri, string code, string bicepConfigFilePath, CancellationToken cancellationToken)
+        //asdfg why is bicepConfigFilePath allowed to be empty?
+        public override async Task<Unit> Handle(DocumentUri documentUri, string ruleCode, string bicepConfigFilePath, CancellationToken cancellationToken)
         {
             //(string updatedBicepConfigFilePath, string bicepConfigContents) = GetBicepConfigFilePathAndContents(documentUri, code, bicepConfigFilePath);
 
             //File.WriteAllText(updatedBicepConfigFilePath, bicepConfigContents);
 
-            string bicepConfigContents;
-            if (File.Exists(bicepConfigFilePath))
+            if (string.IsNullOrEmpty(bicepConfigFilePath))
             {
-                bicepConfigContents = File.ReadAllText(bicepConfigFilePath); //asdfg errors?
-            }
-            else
-            {
-                bicepConfigContents = ConfigureLinterRule(string.Empty, code);
-                //asdfg where create?
                 var directoryContainingSourceFile = Path.GetDirectoryName(documentUri.GetFileSystemPath()) ??
                     throw new ArgumentException("Unable to find directory information");
-
                 bicepConfigFilePath = Path.Combine(directoryContainingSourceFile, LanguageConstants.BicepConfigurationFileName);
-                File.WriteAllText(bicepConfigFilePath, bicepConfigContents);
-                //return (0, 0, 0); //(bicepConfigFilePath, ConfigureLinterRule(string.Empty, code));
             }
 
-            await SetCursor(code, bicepConfigFilePath);
-            return await Unit.Task;
+            if (!File.Exists(bicepConfigFilePath))
+            {
+                // use server  workspace.workspaceEdit?
+                File.WriteAllText(bicepConfigFilePath, DefaultBicepConfig); //asdfg error handling
+            }
+
+            await SetCursor(ruleCode, bicepConfigFilePath);
+            //bicepConfigContents = ConfigureLinterRule(string.Empty, code);
+            //asdfg where create?
+            //var directoryContainingSourceFile = Path.GetDirectoryName(documentUri.GetFileSystemPath()) ??
+            //    throw new ArgumentException("Unable to find directory information");
+
+            //bicepConfigFilePath = Path.Combine(directoryContainingSourceFile, LanguageConstants.BicepConfigurationFileName);
+            //File.WriteAllText(bicepConfigFilePath, bicepConfigContents);
+            //return (0, 0, 0); //(bicepConfigFilePath, ConfigureLinterRule(string.Empty, code));
+
+
+            //{
+            //    bicepConfigContents = File.ReadAllText(bicepConfigFilePath); //asdfg errors?
+            //}
+            //else
+
+
+            //await SetCursor(ruleCode, bicepConfigFilePath);
+            return Unit.Value;
         }
 
         //public (int, int, int) GetBicepConfigFilePathAndContents(DocumentUri documentUri, string code, string bicepConfigFilePath)
@@ -106,6 +120,14 @@ namespace Bicep.LanguageServer.Handlers
 
         public async Task SetCursor(/*DocumentUri documentUri, */string code, string bicepConfigFilePath)
         {
+            await server.Window.ShowDocument(new ShowDocumentParams() //asdfg return?failure?
+            {
+                Uri = DocumentUri.File(bicepConfigFilePath),
+                // Selection = new Range(line - 1, column - 1, line - 1, column - 1 + length),
+                TakeFocus = true
+            });
+
+
             //if (File.Exists(bicepConfigFilePath))
             //{
             //var bicepConfigContents = File.ReadAllText(bicepConfigFilePath); //asdfg errors?
@@ -113,13 +135,13 @@ namespace Bicep.LanguageServer.Handlers
             //string jsonString = bicepConfigContents;
 
             // Convert the JSON string to a JObject:
-            TextReader textReader = File.OpenText(bicepConfigFilePath);
+            TextReader textReader = File.OpenText(bicepConfigFilePath); // open properly
             JsonReader jsonReader = new JsonTextReader(textReader);
-            while (jsonReader.Read())
-            {
-                var a = jsonReader.Value;
-            }
-            jsonReader = new JsonTextReader(textReader);
+            //while (jsonReader.Read())
+            //{
+            //    var a = jsonReader.Value;
+            //}
+            //jsonReader = new JsonTextReader(textReader);
             // LineInfoHandling.Load ensures line info is saved for all tokens while parsing (requires some additional memory).
             var jObject = JObject.Load(jsonReader, new JsonLoadSettings
             {
@@ -138,7 +160,7 @@ namespace Bicep.LanguageServer.Handlers
                 int column = a.LinePosition - jToken.ToString().Length;
                 int length = jToken.ToString().Length;
                 // GetBicepConfigFilePathAndContents(documentUri, code, bicepConfigFilePath);
-                var showDocResult = await server.Window.ShowDocument(new ShowDocumentParams()
+                await server.Window.ShowDocument(new ShowDocumentParams() //asdfg return?failure?
                 {
                     Uri = DocumentUri.File(bicepConfigFilePath),
                     Selection = new Range(line - 1, column - 1, line - 1, column - 1 + length),
@@ -152,14 +174,45 @@ namespace Bicep.LanguageServer.Handlers
                 // File.WriteAllText(bicepConfigFilePath, updatedJsonString);
             }
             else
-            {
+            {//asdfg
                 string json = File.ReadAllText(bicepConfigFilePath);
-                (int line, int column, string text)? insertion = new JsonEditor(json).GetValueInsertionIfNotExist(
+                (int line, int column, string text)? insertion = new JsonEditor(json).InsertIfNotExist(
                     new string[] { "analyzers", "core", "rules", code },
                     new { level = "warning" });
-            }
 
-            //return (0, 0, 0); //(bicepConfigFilePath, ConfigureLinterRule(bicepConfigContents, code));
+                if (insertion.HasValue)
+                {
+                    var (line, column, insertText) = insertion.Value;
+                    await server.Workspace.ApplyWorkspaceEdit(
+                        new ApplyWorkspaceEditParams()
+                        {
+                            Label = "asdfg",
+                            Edit = new WorkspaceEdit()
+                            {
+                                DocumentChanges = new Container<WorkspaceEditDocumentChange>(
+                                    new WorkspaceEditDocumentChange(
+                                        new TextDocumentEdit()
+                                        {
+                                            TextDocument = new OptionalVersionedTextDocumentIdentifier() { Uri = DocumentUri.File(bicepConfigFilePath) },
+                                            Edits = new TextEditContainer(
+                                                new TextEdit()
+                                                {
+                                                    Range = new Range()
+                                                    {
+                                                        Start = new Position(line, column),
+                                                        End = new Position(line, column)
+                                                    },
+                                                    NewText = insertText
+                                                }
+                                            )
+                                        }
+                                    )
+                                )
+                            }
+                        }
+                    );
+                }
+            }
         }
 
         public string ConfigureLinterRule(string bicepConfigContents, string code)

@@ -103,12 +103,144 @@ namespace Bicep.LangServer.UnitTests.Configuration
             );
         }
 
+        [TestMethod]
+        public void InvalidJson_Empty_ShouldReproduceDefaultValue()
+        {
+            TestInsertion(
+                "",
+                "analyzers.core.rules.no-unused-params.level",
+                "warning",
+                @"{
+  ""analyzers"": {
+    ""core"": {
+      ""rules"": {
+        ""no-unused-params"": {
+          ""level"": ""warning""
+        }
+      }
+    }
+  }
+}"
+            );
+        }
+
+        [TestMethod]
+        public void InvalidJson_JustWhitespaceAndComments_ShouldAppendDefaultValue()
+        {
+            TestInsertion(
+                @"
+                    // Well hello there
+
+                // again",
+                "analyzers.core.rules.no-unused-params.level",
+                "warning",
+                @"{
+                    // Well hello there
+
+                // again
+  ""analyzers"": {
+    ""core"": {
+      ""rules"": {
+        ""no-unused-params"": {
+          ""level"": ""warning""
+        }
+      }
+    }
+  }
+}");
+        }
+
+        [TestMethod]
+        public void EmptyJsonObjectNoSpaces()
+        {
+            TestInsertion(
+                @"{}",
+                "analyzers.core.rules.no-unused-params.level",
+                "warning",
+                @"{
+  ""analyzers"": {
+    ""core"": {
+      ""rules"": {
+        ""no-unused-params"": {
+          ""level"": ""warning""
+        }
+      }
+    }
+  }}");
+        }
+
+        [TestMethod]
+        public void EmptyJsonObjectWithNewline()
+        {
+            TestInsertion(
+                @"{
+}",
+                "analyzers.core.rules.no-unused-params.level",
+                "warning",
+                @"{
+  ""analyzers"": {
+    ""core"": {
+      ""rules"": {
+        ""no-unused-params"": {
+          ""level"": ""warning""
+        }
+      }
+    }
+  }
+}");
+        }
+
+        [TestMethod]
+        public void EmptyJson()
+        {
+            TestInsertion(
+                "",
+                "analyzers.core.rules.no-unused-params.level",
+                "info",
+                @"{
+  ""analyzers"": {
+    ""core"": {
+      ""rules"": {
+        ""no-unused-params"": {
+          ""level"": ""info""
+        }
+      }
+    }
+  }
+}");
+        }
+
+        [TestMethod]
+        public void EmptyJsonWithWhitespace()
+        {
+            TestInsertion(
+                @"
+
+",
+                "analyzers.core.rules.no-unused-params.level",
+                "warning",
+                @"
+
+{
+  ""analyzers"": {
+    ""core"": {
+      ""rules"": {
+        ""no-unused-params"": {
+          ""level"": ""warning""
+        }
+      }
+    }
+  }
+}");
+        }
+
         private void TestInsertion(string beforeText, string insertionPath, object insertionValue, string? afterText)
         {
-            (int line, int column, string text)? insertion = new JsonEditor(beforeText).
-                GetValueInsertionIfNotExist(
-                insertionPath.Split('.').Where(p => p.Length > 0).ToArray(),
-                insertionValue);
+            (int line, int column, string text)? insertion =
+                new JsonEditor(beforeText).
+                    InsertIfNotExist(
+                        insertionPath.Split('.').Where(p => p.Length > 0).ToArray(),
+                        insertionValue);
             if (afterText is null)
             {
                 insertion.Should().BeNull();
